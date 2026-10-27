@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-slate-900">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ParkTrack - Estacionamiento Inteligente</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        mint: {
+                            400: '#34D399',
+                            500: '#10B981',
+                            600: '#059669',
+                            700: '#047857'
+                        },
+                        brandBlue: {
+                            500: '#3B82F6',
+                            600: '#2563EB',
+                            700: '#1D4ED8',
+                            800: '#1E40AF'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #10B981;
+            border-radius: 4px;
+        }
+
+        /* Pulse glow for active elements */
+        .glow-mint {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+        }
+        .glow-blue {
+            box-shadow: 0 0 20px rgba(37, 99, 235, 0.5);
+        }
+
+        /* Animated grid background for map */
+        .grid-bg {
+            background-size: 30px 30px;
+            background-image: 
+                linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+        }
+
+        /* Ticket edge effect */
+        .ticket-cutout {
+            background-image: radial-gradient(circle at 0 50%, transparent 8px, #1e293b 8.5px);
+            background-position: 0 0;
+            background-size: 100% 100%;
+        }
+        .ticket-cutout-right {
+            background-image: radial-gradient(circle at 100% 50%, transparent 8px, #1e293b 8.5px);
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-950 text-slate-100 flex justify-center items-center overflow-hidden">
+
+    <!-- Container simulador móvil -->
+    <div id="app-container" class="w-full max-w-md h-full md:h-[92vh] md:max-h-[850px] md:rounded-[36px] bg-slate-900 flex flex-col relative overflow-hidden shadow-2xl border-0 md:border-4 border-slate-800">
+        
+        <!-- PANTALLA LOGIN / REGISTRO (Inicial) -->
+        <div id="auth-screen" class="absolute inset-0 z-50 bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex flex-col justify-between p-6 overflow-y-auto">
+            <div class="pt-8 text-center flex flex-col items-center">
+                <!-- SVG Logo: Front Tire / Llanta de Frente -->
+                <div class="w-24 h-24 mb-4 relative flex items-center justify-center">
+                    <div class="absolute inset-0 bg-mint-500/20 rounded-full blur-xl animate-pulse"></div>
+                    <svg class="w-20 h-20 relative drop-shadow-md" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Outer Tire Rim -->
+                        <circle cx="50" cy="50" r="46" stroke="url(#mint-grad)" stroke-width="8"/>
+                        <!-- Tread Marks -->
+                        <path d="M 50 4 L 50 12 M 50 88 L 50 96 M 4 50 L 12 50 M 88 50 L 96 50 M 17 17 L 23 23 M 77 77 L 83 83 M 17 83 L 23 77 M 77 17 L 83 23" stroke="#10B981" stroke-width="4" stroke-linecap="round"/>
+                        <!-- Inner Rim / Metal Wheel -->
+                        <circle cx="50" cy="50" r="28" fill="#1E293B" stroke="#2563EB" stroke-width="4"/>
+                        <!-- Wheel Spokes -->
+                        <circle cx="50" cy="50" r="10" fill="#10B981"/>
+                        <path d="M50 22 L50 40 M50 60 L50 78 M22 50 L40 50 M60 50 L78 50" stroke="#3B82F6" stroke-width="4" stroke-linecap="round"/>
+                        <!-- Gradients -->
+                        <defs>
+                            <linearGradient id="mint-grad" x1="0" y1="0" x2="100" y2="100">
+                                <stop offset="0%" stop-color="#10B981"/>
+                                <stop offset="100%" stop-color="#2563EB"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <h1 class="text-3xl font-extrabold tracking-tight text-white">Park<span class="text-mint-400">Track</span></h1>
+                <p class="text-slate-400 text-sm mt-1">Estacionamiento inteligente a un toque</p>
+            </div>
+
+            <!-- Tab Switcher Login/Register -->
+            <div class="bg-slate-800/80 p-1 rounded-2xl border border-slate-700/50 my-6 flex">
+                <button id="btn-tab-login" onclick="switchAuthTab('login')" class="flex-1 py-2.5 rounded-xl font-bold text-sm transition-all bg-mint-500 text-slate-950 shadow-lg">Iniciar Sesión</button>
+                <button id="btn-tab-register" onclick="switchAuthTab('register')" class="flex-1 py-2.5 rounded-xl font-bold text-sm text-slate-400 hover:text-white transition-all">Crear Cuenta</button>
+            </div>
+
+            <!-- Form Dynamic Container -->
+            <div class="space-y-4 mb-auto">
+                <div id="auth-field-name" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Nombre Completo</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-user absolute left-4 top-3.5 text-slate-500"></i>
+                        <input type="text" id="input-auth-name" placeholder="Juan Pérez" class="w-full bg-slate-800/90 border border-slate-700/70 rounded-xl py-3 pl-11 pr-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-mint-500 transition-colors">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Correo Electrónico</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-envelope absolute left-4 top-3.5 text-slate-500"></i>
+                        <input type="email" id="input-auth-email" value="usuario@parktrack.com" placeholder="correo@ejemplo.com" class="w-full bg-slate-800/90 border border-slate-700/70 rounded-xl py-3 pl-11 pr-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-mint-500 transition-colors">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Contraseña</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-lock absolute left-4 top-3.5 text-slate-500"></i>
+                        <input type="password" id="input-auth-pass" value="123456" placeholder="••••••••" class="w-full bg-slate-800/90 border border-slate-700/70 rounded-xl py-3 pl-11 pr-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-mint-500 transition-colors">
+                    </div>
+                </div>
+
+                <div id="auth-field-plate" class="hidden">
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Placa del Vehículo principal</label>
+                    <div class="relative">
+                        <i class="fa-solid fa-car absolute left-4 top-3.5 text-slate-500"></i>
+                        <input type="text" id="input-auth-plate" placeholder="ABC-123-A" class="w-full bg-slate-800/90 border border-slate-700/70 rounded-xl py-3 pl-11 pr-4 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-mint-500 transition-colors uppercase">
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="handleAuthSubmit()" class="w-full mt-6 bg-gradient-to-r from-mint-500 to-brandBlue-600 hover:from-mint-600 hover:to-brandBlue-700 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all transform active:scale-95 flex items-center justify-center space-x-2">
+                <span id="auth-btn-text">Ingresar a ParkTrack</span>
+                <i class="fa-solid fa-arrow-right"></i>
+            </button>
+            
+            <p class="text-xs text-center text-slate-500 mt-4">Al ingresar aceptas los Términos y Condiciones de uso.</p>
+        </div>
+
+        <!-- HEADER PRINCIPAL APP -->
+        <header class="bg-slate-900/90 backdrop-blur-md border-b border-slate-800 p-4 flex items-center justify-between shrink-0 z-30">
+            <div class="flex items-center space-x-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-mint-500 to-brandBlue-600 flex items-center justify-center shadow-md">
+                    <i class="fa-solid fa-car-side text-slate-950 font-black text-base"></i>
+                </div>
+                <div>
+                    <span class="font-extrabold text-base tracking-tight text-white block leading-tight">Park<span class="text-mint-400">Track</span></span>
+                    <span id="app-user-plate-badge" class="text-[10px] font-bold text-mint-400 bg-mint-950/80 px-1.5 py-0.5 rounded border border-mint-500/30">PLACA: ABC-123-A</span>
+                </div>
+            </div>
+
+            <!-- Header Balance Quick Button -->
+            <button onclick="switchTab('perfil'); openRechargeModal();" class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-full border border-slate-700 transition-colors">
+                <i class="fa-solid fa-wallet text-mint-400 text-xs"></i>
+                <span id="header-wallet-balance" class="text-xs font-bold text-white">$250.00</span>
+            </button>
+        </header>
+
+        <!-- CONTENIDO PRINCIPAL SWIPEABLE DE PESTAÑAS -->
+        <main id="swipe-container" class="flex-1 overflow-hidden relative w-full">
+            
+            <!-- 1. PESTAÑA MAPA -->
+            <section id="tab-mapa" class="tab-content absolute inset-0 flex flex-col bg-slate-950 transition-transform duration-300 transform translate-x-0">
+                <!-- Header Controls: Map vs List Switcher -->
+                <div class="p-3 bg-slate-900/80 border-b border-slate-800 flex items-center justify-between z-10 shrink-0">
+                    <div class="bg-slate-950 p-1 rounded-xl border border-slate-800 flex w-full">
+                        <button id="view-mode-map-btn" onclick="toggleMapView('map')" class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-mint-500 text-slate-950 transition-all flex items-center justify-center space-x-1">
+                            <i class="fa-solid fa-map-location-dot"></i>
+                            <span>Mapa 2D</span>
+                        </button>
+                        <button id="view-mode-list-btn" onclick="toggleMapView('list')" class="flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all flex items-center justify-center space-x-1">
+                            <i class="fa-solid fa-list-ul"></i>
+                            <span>Lista (10)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Banner de Reserva / Estancia Activa (Si existe) -->
+                <div id="active-reservation-card" class="hidden px-4 pt-3 shrink-0 z-10">
+                    <div class="bg-gradient-to-r from-brandBlue-800/80 to-slate-800 p-3 rounded-2xl border border-brandBlue-500/40 shadow-lg flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-10 h-10 rounded-xl bg-brandBlue-600 text-white flex items-center justify-center font-bold text-lg animate-pulse">
+                                <i class="fa-solid fa-square-parking"></i>
+                            </div>
+                            <div>
+                                <div class="text-[10px] uppercase tracking-wider text-brandBlue-300 font-extrabold flex items-center space-x-1">
+                                    <span class="w-2 h-2 rounded-full bg-mint-400 animate-ping inline-block"></span>
+                                    <span>ESTANCIA / RESERVA ACTIVA</span>
+                                </div>
+                                <div id="active-res-name" class="text-sm font-bold text-white">Estacionamiento Monopoly</div>
+                                <div id="active-res-spot" class="text-xs text-slate-300">Lugar: Cajón A-04</div>
+                            </div>
+                        </div>
+                        <button onclick="cancelActiveReservation()" class="bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-bold px-3 py-2 rounded-xl transition-all">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Contenido Dinámico: Mapa 2D Ficticio -->
+                <div id="map-interactive-view" class="flex-1 relative overflow-hidden grid-bg flex items-center justify-center">
+                    <div class="absolute inset-0 bg-slate-950/40 pointer-events-none"></div>
+
+                    <!-- Canvas/Ilustración del Mapa 2D con Calles e Iconos -->
+                    <div class="relative w-[340px] h-[380px] bg-slate-900/90 rounded-3xl border-2 border-slate-700/50 p-4 shadow-2xl flex flex-wrap content-between justify-between">
+                        <!-- Simulated Streets -->
+                        <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-8 bg-slate-800/80 border-y border-dashed border-slate-600 flex items-center justify-around">
+                            <span class="text-[9px] text-slate-500 font-mono">AV. PRINCIPAL PARKTRACK</span>
+                        </div>
+                        <div class="absolute inset-y-0 left-1/2 -translate-x-1/2 w-8 bg-slate-800/80 border-x border-dashed border-slate-600"></div>
+
+                        <!-- 10 Map Pins Interactive -->
+                        <div id="pins-container" class="relative inset-0 w-full h-full">
+                            <!-- Pins inserted dynamically by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contenido Dinámico: Lista de Estacionamientos -->
+                <div id="map-list-view" class="hidden flex-1 overflow-y-auto p-4 space-y-3">
+                    <!-- Cards de los 10 estacionamientos -->
+                </div>
+            </section>
+
+            <!-- 2. PESTAÑA BOLETO (CRONÓMETRO Y ESTANCIA) -->
+            <section id="tab-boleto" class="tab-content absolute inset-0 flex flex-col bg-slate-950 transition-transform duration-300 transform translate-x-full overflow-y-auto p-4">
+                <div class="text-center mb-2">
+                    <h2 class="text-xl font-black text-white">Boleto Digital</h2>
+                    <p class="text-xs text-slate-400">Tiempo en vivo y costo acumulado</p>
+                </div>
+
+                <!-- Estado SIN Estancia -->
+                <div id="ticket-no-active" class="flex-1 flex flex-col items-center justify-center text-center p-6 bg-slate-900/50 rounded-3xl border border-slate-800 my-4">
+                    <div class="w-20 h-20 rounded-full bg-slate-800/80 flex items-center justify-center text-slate-600 mb-4 border border-slate-700">
+                        <i class="fa-solid fa-clock-rotate-left text-3xl"></i>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-1">Sin Estancia Activa</h3>
+                    <p class="text-xs text-slate-400 max-w-xs mb-6">Selecciona un estacionamiento en el Mapa o usa tu "Pase QR" para ingresar al parquímetro.</p>
+                    <button onclick="switchTab('mapa')" class="bg-mint-500 hover:bg-mint-600 text-slate-950 font-bold px-6 py-3 rounded-xl text-xs transition-all shadow-lg glow-mint">
+                        Explorar Estacionamientos
+                    </button>
+                </div>
+
+                <!-- Estado CON Estancia (Cronómetro en tiempo real) -->
+                <div id="ticket-active" class="hidden flex-1 flex flex-col justify-between">
+                    <div class="bg-slate-800/90 rounded-3xl border border-slate-700/80 overflow-hidden shadow-2xl">
+                        <!-- Header del Ticket -->
+                        <div class="bg-gradient-to-r from-mint-600 to-brandBlue-600 p-4 text-center relative">
+                            <span id="ticket-parking-name" class="text-lg font-black text-white block">Estacionamiento Monopoly</span>
+                            <span id="ticket-spot-code" class="text-xs font-bold text-slate-900 bg-mint-300 px-2.5 py-0.5 rounded-full inline-block mt-1">Cajón: A-04</span>
+                        </div>
+
+                        <!-- Ticket Center Circle Timer -->
+                        <div class="p-6 flex flex-col items-center justify-center border-b border-dashed border-slate-700 relative">
+                            <!-- Circular Progress Visual -->
+                            <div class="relative w-44 h-44 flex items-center justify-center my-2">
+                                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="8" class="text-slate-700" fill="transparent" />
+                                    <circle id="timer-progress-circle" cx="50" cy="50" r="42" stroke="currentColor" stroke-width="8" class="text-mint-400 transition-all duration-1000" fill="transparent" stroke-dasharray="263.89" stroke-dashoffset="0" stroke-linecap="round" />
+                                </svg>
+                                <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                                    <span class="text-[10px] font-bold text-slate-400 tracking-wider uppercase">TIEMPO TRANSCURRIDO</span>
+                                    <span id="ticket-chronometer" class="text-2xl font-black text-white font-mono tracking-wider my-0.5">00:00:00</span>
+                                    <span class="text-[10px] text-mint-400 font-semibold bg-mint-950/80 border border-mint-500/30 px-2 py-0.5 rounded-full">EN VIVO</span>
+                                </div>
+                            </div>
+
+                            <!-- Live Tariff Breakdown -->
+                            <div class="w-full grid grid-cols-2 gap-3 mt-4 text-center">
+                                <div class="bg-slate-900/80 p-3 rounded-2xl border border-slate-800">
+                                    <span class="text-[10px] text-slate-400 font-bold block">TARIFA / HORA</span>
+                                    <span id="ticket-rate-label" class="text-sm font-extrabold text-white">$20.00</span>
+                                </div>
+                                <div class="bg-slate-900/80 p-3 rounded-2xl border border-slate-800">
+                                    <span class="text-[10px] text-slate-400 font-bold block">TOTAL ESTIMADO</span>
+                                    <span id="ticket-current-cost" class="text-sm font-extrabold text-mint-400">$20.00</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ticket Foot Metadata -->
+                        <div class="p-4 bg-slate-900/60 text-xs space-y-2">
+                            <div class="flex justify-between text-slate-400">
+                                <span>Hora de Entrada:</span>
+                                <span id="ticket-start-time" class="text-white font-bold">10:00 AM</span>
+                            </div>
+                            <div class="flex justify-between text-slate-400">
+                                <span>Vehículo:</span>
+                                <span id="ticket-user-plate" class="text-white font-bold">ABC-123-A</span>
+                            </div>
+                            <div class="flex justify-between text-slate-400">
+                                <span>Método de Pago:</span>
+                                <span class="text-white font-bold"><i class="fa-solid fa-wallet text-mint-400 mr-1"></i> Monedero</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="switchTab('qr')" class="w-full mt-4 bg-gradient-to-r from-brandBlue-600 to-mint-600 hover:from-brandBlue-700 hover:to-mint-700 text-white font-extrabold py-3.5 rounded-2xl shadow-lg transition-all flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-qrcode text-lg"></i>
+                        <span>Ver Salida QR para Escanear</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- 3. PESTAÑA PASE QR / SALIDA QR -->
+            <section id="tab-qr" class="tab-content absolute inset-0 flex flex-col bg-slate-950 transition-transform duration-300 transform translate-x-full overflow-y-auto p-4 items-center justify-between">
+                <div class="text-center w-full">
+                    <span id="qr-badge-type" class="text-xs font-black tracking-widest text-mint-400 bg-mint-950 px-3 py-1 rounded-full border border-mint-500/30 uppercase inline-block mb-1">ACCESO RÁPIDO</span>
+                    <h2 id="qr-title-main" class="text-2xl font-black text-white">Pase QR (Entrada)</h2>
+                    <p id="qr-desc-main" class="text-xs text-slate-400">Pulsa la tarjeta o escanea para registrar tu ingreso libre</p>
+                </div>
+
+                <!-- Tarjeta Interactiva QR Principal -->
+                <div onclick="handleQrAction()" class="cursor-pointer my-auto w-full max-w-xs bg-slate-900 p-6 rounded-3xl border-2 border-mint-500/50 shadow-2xl flex flex-col items-center text-center transform active:scale-95 transition-all hover:border-mint-400 relative group glow-mint">
+                    
+                    <div id="qr-status-indicator" class="absolute top-3 right-3 flex items-center space-x-1 bg-mint-950 text-mint-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-mint-500/40">
+                        <span class="w-2 h-2 rounded-full bg-mint-400 animate-ping"></span>
+                        <span id="qr-status-text">LISTO PARA ENTRADA</span>
+                    </div>
+
+                    <!-- Código QR SVG Dinámico con Logo Central -->
+                    <div class="w-52 h-52 bg-white p-3 rounded-2xl my-4 flex items-center justify-center shadow-inner relative">
+                        <svg class="w-full h-full" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                            <!-- QR Code Pattern Simulation -->
+                            <rect width="100" height="100" fill="white"/>
+                            <!-- Position Patterns -->
+                            <rect x="5" y="5" width="28" height="28" fill="black"/>
+                            <rect x="9" y="9" width="20" height="20" fill="white"/>
+                            <rect x="13" y="13" width="12" height="12" fill="black"/>
+
+                            <rect x="67" y="5" width="28" height="28" fill="black"/>
+                            <rect x="71" y="9" width="20" height="20" fill="white"/>
+                            <rect x="75" y="13" width="12" height="12" fill="black"/>
+
+                            <rect x="5" y="67" width="28" height="28" fill="black"/>
+                            <rect x="9" y="71" width="20" height="20" fill="white"/>
+                            <rect x="13" y="75" width="12" height="12" fill="black"/>
+
+                            <!-- Random Blocks -->
+                            <rect x="38" y="8" width="8" height="8" fill="black"/>
+                            <rect x="50" y="16" width="12" height="6" fill="black"/>
+                            <rect x="38" y="38" width="24" height="24" fill="black"/>
+                            <rect x="68" y="40" width="10" height="18" fill="black"/>
+                            <rect x="80" y="68" width="12" height="12" fill="black"/>
+                            <rect x="42" y="68" width="18" height="10" fill="black"/>
+                            <rect x="12" y="38" width="18" height="8" fill="black"/>
+                        </svg>
+                        <!-- Center Tire Icon -->
+                        <div class="absolute w-10 h-10 bg-slate-900 rounded-lg p-1 flex items-center justify-center border border-mint-500 shadow-md">
+                            <i class="fa-solid fa-car text-mint-400 text-lg"></i>
+                        </div>
+                    </div>
+
+                    <span id="qr-click-prompt" class="text-xs font-bold text-mint-400 group-hover:underline flex items-center space-x-1">
+                        <i class="fa-solid fa-hand-pointer animate-bounce"></i>
+                        <span>Toca para Escanear Entrada Exprés</span>
+                    </span>
+                </div>
+
+                <!-- Info Box Footer -->
+                <div class="w-full bg-slate-900/80 p-3 rounded-2xl border border-slate-800 text-center text-xs text-slate-400">
+                    <i class="fa-solid fa-circle-info text-mint-400 mr-1"></i>
+                    <span>Este código funciona en cualquiera de nuestros 10 estacionamientos afiliados.</span>
+                </div>
+            </section>
+
+            <!-- 4. PESTAÑA HISTORIAL -->
+            <section id="tab-historial" class="tab-content absolute inset-0 flex flex-col bg-slate-950 transition-transform duration-300 transform translate-x-full overflow-y-auto p-4">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-xl font-black text-white">Historial de Pagos</h2>
+                        <p class="text-xs text-slate-400">Estancias y recargas registradas</p>
+                    </div>
+                    <span id="history-count-badge" class="bg-slate-800 text-xs text-slate-300 font-bold px-2.5 py-1 rounded-full border border-slate-700">3 Movimientos</span>
+                </div>
+
+                <div id="history-list-container" class="space-y-3">
+                    <!-- History items rendered by JS -->
+                </div>
+            </section>
+
+            <!-- 5. PESTAÑA PERFIL -->
+            <section id="tab-perfil" class="tab-content absolute inset-0 flex flex-col bg-slate-950 transition-transform duration-300 transform translate-x-full overflow-y-auto p-4 space-y-4">
+                <div class="text-center">
+                    <h2 class="text-xl font-black text-white">Mi Perfil ParkTrack</h2>
+                    <p class="text-xs text-slate-400">Administra tu saldo, vehículos y tarjetas</p>
+                </div>
+
+                <!-- User Profile Card -->
+                <div class="bg-slate-900 p-4 rounded-3xl border border-slate-800 flex items-center space-x-4">
+                    <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-mint-500 to-brandBlue-600 flex items-center justify-center text-slate-950 font-black text-2xl shadow-lg">
+                        <span id="profile-avatar-initials">JP</span>
+                    </div>
+                    <div class="flex-1">
+                        <h3 id="profile-user-name" class="text-base font-bold text-white">Juan Pérez</h3>
+                        <p id="profile-user-email" class="text-xs text-slate-400">usuario@parktrack.com</p>
+                        <span class="inline-block mt-1 bg-mint-950 text-mint-400 text-[10px] font-extrabold px-2 py-0.5 rounded border border-mint-500/30">CONDUCTOR FRECUENTE</span>
+                    </div>
+                </div>
+
+                <!-- Wallet Card -->
+                <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-5 rounded-3xl border border-slate-700/80 shadow-xl relative overflow-hidden">
+                    <div class="absolute -right-4 -bottom-4 text-slate-800/40 opacity-30 text-8xl">
+                        <i class="fa-solid fa-wallet"></i>
+                    </div>
+                    <span class="text-xs font-bold text-slate-400 block uppercase tracking-wider">Saldo en Monedero</span>
+                    <div class="flex items-baseline space-x-1 my-1">
+                        <span id="profile-wallet-amount" class="text-3xl font-black text-white">$250.00</span>
+                        <span class="text-xs text-mint-400 font-bold">MXN</span>
+                    </div>
+                    <button onclick="openRechargeModal()" class="mt-3 w-full bg-mint-500 hover:bg-mint-600 text-slate-950 font-extrabold py-2.5 rounded-xl text-xs transition-all shadow-md flex items-center justify-center space-x-2 glow-mint">
+                        <i class="fa-solid fa-plus-circle"></i>
+                        <span>Recargar Salo de Monedero</span>
+                    </button>
+                </div>
+
+                <!-- Vehicle Management -->
+                <div class="bg-slate-900 p-4 rounded-3xl border border-slate-800 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+                            <i class="fa-solid fa-car text-brandBlue-500"></i>
+                            <span>Vehículos Registrados</span>
+                        </span>
+                        <button onclick="addNewPlatePrompt()" class="text-xs font-bold text-mint-400 hover:underline">+ Agregar</button>
+                    </div>
+                    <div id="plates-list-container" class="space-y-2">
+                        <!-- Vehicles list -->
+                    </div>
+                </div>
+
+                <!-- Payment Methods -->
+                <div class="bg-slate-900 p-4 rounded-3xl border border-slate-800 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-1.5">
+                            <i class="fa-solid fa-credit-card text-mint-400"></i>
+                            <span>Métodos de Pago</span>
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between bg-slate-800/80 p-3 rounded-2xl border border-slate-700/60">
+                        <div class="flex items-center space-x-3">
+                            <i class="fa-brands fa-cc-visa text-2xl text-blue-400"></i>
+                            <div>
+                                <span class="text-xs font-bold text-white block">Visa Débito **** 4821</span>
+                                <span class="text-[10px] text-slate-400">Principal para recargas</span>
+                            </div>
+                        </div>
+                        <span class="text-[10px] font-bold text-mint-400 bg-mint-950 px-2 py-0.5 rounded border border-mint-500/30">ACTIVA</span>
+                    </div>
+                </div>
+
+                <!-- Logout Button -->
+                <button onclick="logoutUser()" class="w-full bg-slate-900 hover:bg-rose-950/40 text-rose-400 border border-slate-800 hover:border-rose-800/50 font-bold py-3 rounded-2xl text-xs transition-all flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Cerrar Sesión</span>
+                </button>
+            </section>
+
+        </main>
+
+        <!-- BARRA NAVEGACIÓN INFERIOR (5 PESTAÑAS) -->
+        <nav class="bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-2 py-2 shrink-0 z-30">
+            <div class="grid grid-cols-5 gap-1 text-center">
+                
+                <!-- Tab 1: Mapa -->
+                <button id="nav-btn-mapa" onclick="switchTab('mapa')" class="nav-tab-btn flex flex-col items-center py-1.5 text-mint-400 transition-all">
+                    <i class="fa-solid fa-map-location-dot text-lg"></i>
+                    <span class="text-[10px] font-bold mt-1">Mapa</span>
+                </button>
+
+                <!-- Tab 2: Boleto -->
+                <button id="nav-btn-boleto" onclick="switchTab('boleto')" class="nav-tab-btn flex flex-col items-center py-1.5 text-slate-500 hover:text-slate-300 transition-all relative">
+                    <span id="nav-ticket-dot" class="hidden absolute top-1 right-5 w-2 h-2 rounded-full bg-mint-400 animate-ping"></span>
+                    <i class="fa-solid fa-ticket text-lg"></i>
+                    <span class="text-[10px] font-bold mt-1">Boleto</span>
+                </button>
+
+                <!-- Tab 3: QR (Pase/Salida) -->
+                <button id="nav-btn-qr" onclick="switchTab('qr')" class="nav-tab-btn flex flex-col items-center py-1.5 text-slate-500 hover:text-slate-300 transition-all">
+                    <div id="nav-qr-icon-wrapper" class="w-8 h-8 rounded-full bg-gradient-to-tr from-mint-500 to-brandBlue-600 text-slate-950 flex items-center justify-center shadow-md">
+                        <i class="fa-solid fa-qrcode text-base"></i>
+                    </div>
+                    <span id="nav-qr-label" class="text-[9px] font-bold mt-0.5 text-mint-400">Pase QR</span>
+                </button>
+
+                <!-- Tab 4: Historial -->
+                <button id="nav-btn-historial" onclick="switchTab('historial')" class="nav-tab-btn flex flex-col items-center py-1.5 text-slate-500 hover:text-slate-300 transition-all">
+                    <i class="fa-solid fa-receipt text-lg"></i>
+                    <span class="text-[10px] font-bold mt-1">Historial</span>
+                </button>
+
+                <!-- Tab 5: Perfil -->
+                <button id="nav-btn-perfil" onclick="switchTab('perfil')" class="nav-tab-btn flex flex-col items-center py-1.5 text-slate-500 hover:text-slate-300 transition-all">
+                    <i class="fa-solid fa-user text-lg"></i>
+                    <span class="text-[10px] font-bold mt-1">Perfil</span>
+                </button>
+
+            </div>
+        </nav>
+
+        <!-- MODAL DETALLE / MAPA DE CAJONES DE ESTACIONAMIENTO -->
+        <div id="modal-parking-detail" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4">
+            <div class="bg-slate-900 w-full max-w-md rounded-t-3xl md:rounded-3xl border border-slate-700/80 max-h-[90vh] flex flex-col overflow-hidden shadow-2xl animate-in slide-in-from-bottom duration-200">
+                
+                <!-- Modal Header -->
+                <div class="p-4 bg-slate-800/80 border-b border-slate-700 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl bg-mint-500/20 border border-mint-500/40 text-mint-400 flex items-center justify-center text-xl font-extrabold">
+                            <i class="fa-solid fa-square-parking"></i>
+                        </div>
+                        <div>
+                            <h3 id="modal-park-title" class="text-base font-extrabold text-white">Estacionamiento Monopoly</h3>
+                            <span id="modal-park-rate" class="text-xs font-bold text-mint-400">$20.00 / hr</span>
+                        </div>
+                    </div>
+                    <button onclick="closeParkingModal()" class="w-8 h-8 rounded-full bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <!-- Modal Body: Map Grid of Spots -->
+                <div class="p-4 overflow-y-auto space-y-4">
+                    <div class="flex items-center justify-around text-xs bg-slate-950 p-2 rounded-xl border border-slate-800">
+                        <div class="flex items-center space-x-1.5">
+                            <span class="w-3 h-3 rounded-md bg-mint-500 inline-block"></span>
+                            <span class="text-slate-300">Libre</span>
+                        </div>
+                        <div class="flex items-center space-x-1.5">
+                            <span class="w-3 h-3 rounded-md bg-amber-500 inline-block"></span>
+                            <span class="text-slate-300">Reservado</span>
+                        </div>
+                        <div class="flex items-center space-x-1.5">
+                            <span class="w-3 h-3 rounded-md bg-rose-500 inline-block"></span>
+                            <span class="text-slate-300">Ocupado</span>
+                        </div>
+                    </div>
+
+                    <div class="text-center">
+                        <span class="text-xs font-bold text-slate-400">SELECCIONA UN CAJÓN DISPONIBLE</span>
+                        <div id="spots-grid-container" class="grid grid-cols-4 gap-2.5 mt-3">
+                            <!-- 12 Spots generated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer Confirm Action -->
+                <div class="p-4 bg-slate-950 border-t border-slate-800">
+                    <button id="btn-confirm-spot" disabled onclick="confirmSpotReservation()" class="w-full bg-slate-800 text-slate-500 font-extrabold py-3.5 rounded-xl text-xs transition-all flex items-center justify-center space-x-2">
+                        <span>Selecciona un cajón libre arriba</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL RECARGA DE SALDO MONEDERO -->
+        <div id="modal-recharge" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-end md:items-center justify-center p-0 md:p-4">
+            <div class="bg-slate-900 w-full max-w-md rounded-t-3xl md:rounded-3xl border border-slate-700/80 p-5 space-y-4 shadow-2xl">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <div class="flex items-center space-x-2">
+                        <i class="fa-solid fa-wallet text-mint-400 text-xl"></i>
+                        <h3 class="text-base font-extrabold text-white">Recargar Monedero ParkTrack</h3>
+                    </div>
+                    <button onclick="closeRechargeModal()" class="text-slate-400 hover:text-white">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <p class="text-xs text-slate-400">Selecciona un monto predefinido o ingresa una cantidad personalizada:</p>
+
+                <!-- Preset Amount Buttons -->
+                <div class="grid grid-cols-4 gap-2">
+                    <button onclick="selectPresetAmount(50)" class="preset-amt-btn bg-slate-800 hover:bg-slate-700 text-white font-extrabold py-2.5 rounded-xl text-xs border border-slate-700 transition-all">$50</button>
+                    <button onclick="selectPresetAmount(100)" class="preset-amt-btn bg-slate-800 hover:bg-slate-700 text-white font-extrabold py-2.5 rounded-xl text-xs border border-slate-700 transition-all">$100</button>
+                    <button onclick="selectPresetAmount(200)" class="preset-amt-btn bg-slate-800 hover:bg-slate-700 text-white font-extrabold py-2.5 rounded-xl text-xs border border-slate-700 transition-all">$200</button>
+                    <button onclick="selectPresetAmount(500)" class="preset-amt-btn bg-slate-800 hover:bg-slate-700 text-white font-extrabold py-2.5 rounded-xl text-xs border border-slate-700 transition-all">$500</button>
+                </div>
+
+                <!-- Custom Amount Input -->
+                <div>
+                    <label class="block text-xs font-semibold text-slate-400 mb-1">Monto Personalizado ($ MXN)</label>
+                    <div class="relative">
+                        <span class="absolute left-4 top-3 text-slate-400 font-bold">$</span>
+                        <input type="number" id="input-recharge-amount" placeholder="0.00" class="w-full bg-slate-800 border border-slate-700 rounded-xl py-2.5 pl-8 pr-4 text-sm font-bold text-white focus:outline-none focus:border-mint-500">
+                    </div>
+                </div>
+
+                <button onclick="processWalletRecharge()" class="w-full bg-gradient-to-r from-mint-500 to-brandBlue-600 hover:from-mint-600 hover:to-brandBlue-700 text-slate-950 font-black py-3.5 rounded-xl text-xs transition-all shadow-lg glow-mint">
+                    Confirmar y Pagar
+                </button>
+            </div>
+        </div>
+
+        <!-- MODAL RECIBO DE SALIDA / FINALIZACIÓN DE ESTANCIA -->
+        <div id="modal-receipt" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <div class="bg-slate-900 w-full max-w-sm rounded-3xl border border-mint-500/40 p-6 space-y-4 text-center shadow-2xl relative overflow-hidden">
+                <div class="w-16 h-16 rounded-full bg-mint-500/20 text-mint-400 border border-mint-500/50 flex items-center justify-center text-3xl mx-auto glow-mint">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+
+                <div>
+                    <span class="text-xs font-black text-mint-400 uppercase tracking-widest block">¡ESTANCIA FINALIZADA!</span>
+                    <h3 id="receipt-park-name" class="text-lg font-black text-white">Estacionamiento Monopoly</h3>
+                </div>
+
+                <div class="bg-slate-950 p-4 rounded-2xl border border-slate-800 text-xs space-y-2">
+                    <div class="flex justify-between text-slate-400">
+                        <span>Tiempo Estancia:</span>
+                        <span id="receipt-duration" class="text-white font-bold">00:15:30</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400">
+                        <span>Lugar Asignado:</span>
+                        <span id="receipt-spot" class="text-white font-bold">A-04</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400">
+                        <span>Monto Cobrado:</span>
+                        <span id="receipt-amount" class="text-mint-400 font-extrabold text-sm">$20.00 MXN</span>
+                    </div>
+                    <div class="flex justify-between text-slate-400 pt-2 border-t border-slate-800">
+                        <span>Nuevo Saldo Monedero:</span>
+                        <span id="receipt-new-balance" class="text-white font-bold">$230.00 MXN</span>
+                    </div>
+                </div>
+
+                <button onclick="closeReceiptModal()" class="w-full bg-mint-500 hover:bg-mint-600 text-slate-950 font-black py-3 rounded-xl text-xs transition-all shadow-md">
+                    Aceptar y Cerrar
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- JAVASCRIPT LÓGICA COMPLETA DE PARKTRACK -->
+    <script>
+        /* ==========================================================================
+           DATOS DEL ESTADO GLOBAL DE LA APLICACIÓN
+           ========================================================================== */
+        
+        // Estado del usuario activo
+        let currentUser = {
+            name: "Juan Pérez",
+            email: "usuario@parktrack.com",
+            walletBalance: 250.00,
+            plates: ["ABC-123-A", "XYZ-987-B"],
+            activePlateIndex: 0
+        };
+
+        // Estado del cronómetro y estancia activa
+        let activeStay = null; 
+        /* Estructura de activeStay:
+           {
+               parkingId: 'monopoly',
+               parkingName: 'Estacionamiento Monopoly',
+               spotCode: 'A-04',
+               ratePerHour: 20.00,
+               startTime: Date Object,
+               timerInterval: null
+           }
+        */
+
+        // Transacciones registradas en el historial
+        let historyTransactions = [
+            { id: 'TRX-998', type: 'stay', title: 'Estacionamiento Mcqueen', date: 'Ayer, 04:30 PM', duration: '01:12:00', amount: 25.00 },
+            { id: 'TRX-997', type: 'recharge', title: 'Recarga Monedero', date: '25 Oct, 10:00 AM', duration: '-', amount: 200.00 },
+            { id: 'TRX-996', type: 'stay', title: 'Estacionamiento Yoda', date: '22 Oct, 02:15 PM', duration: '02:00:00', amount: 36.00 }
+        ];
+
+        // Los 10 Estacionamientos Temáticos
+        const PARKINGS = [
+            { id: 'monopoly', name: 'Monopoly', rate: 20, freeSpots: 8, totalSpots: 12, pos: { top: '15%', left: '12%' } },
+            { id: 'turista', name: 'Turista', rate: 18, freeSpots: 5, totalSpots: 12, pos: { top: '15%', left: '60%' } },
+            { id: 'jenga', name: 'Jenga', rate: 22, freeSpots: 9, totalSpots: 12, pos: { top: '35%', left: '20%' } },
+            { id: 'mcqueen', name: 'Mcqueen', rate: 25, freeSpots: 4, totalSpots: 12, pos: { top: '35%', left: '68%' } },
+            { id: 'sapo', name: 'Sapo', rate: 15, freeSpots: 10, totalSpots: 12, pos: { top: '55%', left: '10%' } },
+            { id: 'flan', name: 'Flan', rate: 16, freeSpots: 6, totalSpots: 12, pos: { top: '55%', left: '55%' } },
+            { id: 'oldspice', name: 'OldSpice', rate: 20, freeSpots: 7, totalSpots: 12, pos: { top: '75%', left: '18%' } },
+            { id: 'yoda', name: 'Yoda', rate: 18, freeSpots: 3, totalSpots: 12, pos: { top: '75%', left: '65%' } },
+            { id: 'halo', name: 'Halo', rate: 24, freeSpots: 11, totalSpots: 12, pos: { top: '88%', left: '38%' } },
+            { id: 'sultanes', name: 'Sultanes', rate: 20, freeSpots: 2, totalSpots: 12, pos: { top: '2%', left: '38%' } }
+        ];
+
+        // Modal de selección de cajón temporal
+        let selectedParkingForModal = null;
+        let selectedSpotCode = null;
+
+        // Pestañas disponibles
+        const TABS = ['mapa', 'boleto', 'qr', 'historial', 'perfil'];
+        let currentTab = 'mapa';
+
+        /* ==========================================================================
+           CICLO DE INICIALIZACIÓN DE LA APLICACIÓN
+           ========================================================================== */
+        window.addEventListener('DOMContentLoaded', () => {
+            renderMapPins();
+            renderParkingList();
+            renderHistoryList();
+            renderProfileData();
+            setupTouchSwipe();
+        });
+
+        /* ==========================================================================
+           AUTENTICACIÓN (LOGIN Y REGISTRO)
+           ========================================================================== */
+        function switchAuthTab(mode) {
+            const btnLogin = document.getElementById('btn-tab-login');
+            const btnRegister = document.getElementById('btn-tab-register');
+            const fieldName = document.getElementById('auth-field-name');
+            const fieldPlate = document.getElementById('auth-field-plate');
+            const btnText = document.getElementById('auth-btn-text');
+
+            if (mode === 'register') {
+                btnLogin.className = "flex-1 py-2.5 rounded-xl font-bold text-sm text-slate-400 hover:text-white transition-all";
+                btnRegister.className = "flex-1 py-2.5 rounded-xl font-bold text-sm transition-all bg-mint-500 text-slate-950 shadow-lg";
+                fieldName.classList.remove('hidden');
+                fieldPlate.classList.remove('hidden');
+                btnText.innerText = "Crear Mi Cuenta ParkTrack";
+            } else {
+                btnLogin.className = "flex-1 py-2.5 rounded-xl font-bold text-sm transition-all bg-mint-500 text-slate-950 shadow-lg";
+                btnRegister.className = "flex-1 py-2.5 rounded-xl font-bold text-sm text-slate-400 hover:text-white transition-all";
+                fieldName.classList.add('hidden');
+                fieldPlate.classList.add('hidden');
+                btnText.innerText = "Ingresar a ParkTrack";
+            }
+        }
+
+        function handleAuthSubmit() {
+            const email = document.getElementById('input-auth-email').value;
+            const nameInput = document.getElementById('input-auth-name').value;
+            const plateInput = document.getElementById('input-auth-plate').value;
+
+            if (email) {
+                currentUser.email = email;
+            }
+            if (nameInput) {
+                currentUser.name = nameInput;
+            }
+            if (plateInput) {
+                currentUser.plates.unshift(plateInput.toUpperCase());
+            }
+
+            renderProfileData();
+            
+            // Ocultar pantalla de login con animación
+            const authScreen = document.getElementById('auth-screen');
+            authScreen.classList.add('transition-opacity', 'duration-300', 'opacity-0');
+            setTimeout(() => {
+                authScreen.classList.add('hidden');
+            }, 300);
+        }
+
+        function logoutUser() {
+            const authScreen = document.getElementById('auth-screen');
+            authScreen.classList.remove('hidden', 'opacity-0');
+        }
+
+        /* ==========================================================================
+           NAVEGACIÓN DE PESTAÑAS Y SWIPE TÁCTIL
+           ========================================================================== */
+        function switchTab(targetTab) {
+            currentTab = targetTab;
+
+            TABS.forEach(tab => {
+                const sec = document.getElementById(`tab-${tab}`);
+                const btn = document.getElementById(`nav-btn-${tab}`);
+
+                if (tab === targetTab) {
+                    sec.classList.remove('translate-x-full', '-translate-x-full');
+                    sec.classList.add('translate-x-0');
+                    if (btn) btn.classList.add('text-mint-400');
+                    if (btn) btn.classList.remove('text-slate-500');
+                } else {
+                    sec.classList.remove('translate-x-0');
+                    sec.classList.add('translate-x-full');
+                    if (btn) btn.classList.remove('text-mint-400');
+                    if (btn) btn.classList.add('text-slate-500');
+                }
+            });
+        }
+
+        function setupTouchSwipe() {
+            const container = document.getElementById('swipe-container');
+            let startX = 0;
+            let endX = 0;
+
+            container.addEventListener('touchstart', (e) => {
+                startX = e.changedTouches[0].screenX;
+            }, { passive: true });
+
+            container.addEventListener('touchend', (e) => {
+                endX = e.changedTouches[0].screenX;
+                handleSwipeGesture();
+            }, { passive: true });
+
+            function handleSwipeGesture() {
+                const threshold = 50;
+                const currentIndex = TABS.indexOf(currentTab);
+
+                if (startX - endX > threshold && currentIndex < TABS.length - 1) {
+                    // Swipe Left -> Next Tab
+                    switchTab(TABS[currentIndex + 1]);
+                } else if (endX - startX > threshold && currentIndex > 0) {
+                    // Swipe Right -> Prev Tab
+                    switchTab(TABS[currentIndex - 1]);
+                }
+            }
+        }
+
+        /* ==========================================================================
+           RENDERIZADO Y ACCIONES DE MAPA Y ESTACIONAMIENTOS
+           ========================================================================== */
+        function toggleMapView(mode) {
+            const mapBtn = document.getElementById('view-mode-map-btn');
+            const listBtn = document.getElementById('view-mode-list-btn');
+            const mapView = document.getElementById('map-interactive-view');
+            const listView = document.getElementById('map-list-view');
+
+            if (mode === 'map') {
+                mapBtn.className = "flex-1 py-1.5 rounded-lg text-xs font-bold bg-mint-500 text-slate-950 transition-all flex items-center justify-center space-x-1";
+                listBtn.className = "flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all flex items-center justify-center space-x-1";
+                mapView.classList.remove('hidden');
+                listView.classList.add('hidden');
+            } else {
+                listBtn.className = "flex-1 py-1.5 rounded-lg text-xs font-bold bg-mint-500 text-slate-950 transition-all flex items-center justify-center space-x-1";
+                mapBtn.className = "flex-1 py-1.5 rounded-lg text-xs font-bold text-slate-400 hover:text-white transition-all flex items-center justify-center space-x-1";
+                listView.classList.remove('hidden');
+                mapView.classList.add('hidden');
+            }
+        }
+
+        function renderMapPins() {
+            const container = document.getElementById('pins-container');
+            container.innerHTML = '';
+
+            PARKINGS.forEach(p => {
+                const pin = document.createElement('div');
+                pin.className = "absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group";
+                pin.style.top = p.pos.top;
+                pin.style.left = p.pos.left;
+                pin.onclick = () => openParkingModal(p.id);
+
+                pin.innerHTML = `
+                    <div class="relative flex flex-col items-center">
+                        <div class="bg-slate-900/90 text-white border border-mint-500/50 text-[9px] font-black px-2 py-0.5 rounded-full shadow-lg whitespace-nowrap mb-1 group-hover:scale-110 transition-transform flex items-center space-x-1">
+                            <span class="w-1.5 h-1.5 rounded-full bg-mint-400"></span>
+                            <span>${p.name}</span>
+                        </div>
+                        <div class="w-7 h-7 rounded-full bg-gradient-to-tr from-mint-500 to-brandBlue-600 text-slate-950 flex items-center justify-center text-xs font-black shadow-lg border-2 border-slate-900 group-hover:scale-125 transition-transform">
+                            <i class="fa-solid fa-parking"></i>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(pin);
+            });
+        }
+
+        function renderParkingList() {
+            const container = document.getElementById('map-list-view');
+            container.innerHTML = '';
+
+            PARKINGS.forEach(p => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-900 p-4 rounded-2xl border border-slate-800 flex items-center justify-between hover:border-slate-700 transition-all";
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-11 h-11 rounded-xl bg-slate-800 border border-slate-700 text-mint-400 flex items-center justify-center text-lg font-bold">
+                            <i class="fa-solid fa-square-parking"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-bold text-white">${p.name}</h4>
+                            <div class="flex items-center space-x-2 text-xs text-slate-400 mt-0.5">
+                                <span class="text-mint-400 font-extrabold">$${p.rate}.00 / hr</span>
+                                <span>•</span>
+                                <span>${p.freeSpots} lugares libres</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="openParkingModal('${p.id}')" class="bg-slate-800 hover:bg-mint-500 hover:text-slate-950 text-mint-400 border border-slate-700 font-extrabold px-3 py-2 rounded-xl text-xs transition-all">
+                        Reservar
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        /* ==========================================================================
+           MODAL DE RESERVA DE CAJÓN
+           ========================================================================== */
+        function openParkingModal(parkingId) {
+            selectedParkingForModal = PARKINGS.find(p => p.id === parkingId);
+            selectedSpotCode = null;
+
+            document.getElementById('modal-park-title').innerText = `Estacionamiento ${selectedParkingForModal.name}`;
+            document.getElementById('modal-park-rate').innerText = `$${selectedParkingForModal.rate}.00 / hr`;
+
+            const btnConfirm = document.getElementById('btn-confirm-spot');
+            btnConfirm.disabled = true;
+            btnConfirm.className = "w-full bg-slate-800 text-slate-500 font-extrabold py-3.5 rounded-xl text-xs transition-all flex items-center justify-center space-x-2";
+            btnConfirm.innerHTML = `<span>Selecciona un cajón libre arriba</span>`;
+
+            renderSpotsGrid();
+            document.getElementById('modal-parking-detail').classList.remove('hidden');
+        }
+
+        function closeParkingModal() {
+            document.getElementById('modal-parking-detail').classList.add('hidden');
+        }
+
+        function renderSpotsGrid() {
+            const grid = document.getElementById('spots-grid-container');
+            grid.innerHTML = '';
+
+            // Renderizamos 12 cajones simulados (Verde=Libre, Amarillo=Reservado, Rojo=Ocupado)
+            for (let i = 1; i <= 12; i++) {
+                const spotCode = `A-0${i}`;
+                let status = 'free'; // default
+                if (i === 3 || i === 7) status = 'reserved';
+                if (i === 5 || i === 9 || i === 11) status = 'occupied';
+
+                const spotBtn = document.createElement('button');
+                spotBtn.id = `spot-btn-${spotCode}`;
+
+                let colorClasses = "";
+                if (status === 'free') {
+                    colorClasses = "bg-mint-500/20 text-mint-400 border-mint-500/50 hover:bg-mint-500 hover:text-slate-950";
+                } else if (status === 'reserved') {
+                    colorClasses = "bg-amber-500/20 text-amber-400 border-amber-500/50 opacity-60 cursor-not-allowed";
+                } else {
+                    colorClasses = "bg-rose-500/20 text-rose-400 border-rose-500/50 opacity-60 cursor-not-allowed";
+                }
+
+                spotBtn.className = `p-3 rounded-xl border font-black text-xs flex flex-col items-center justify-center space-y-1 transition-all ${colorClasses}`;
+                spotBtn.innerHTML = `
+                    <i class="fa-solid fa-car"></i>
+                    <span>${spotCode}</span>
+                `;
+
+                if (status === 'free') {
+                    spotBtn.onclick = () => selectSpotForReservation(spotCode);
+                }
+
+                grid.appendChild(spotBtn);
+            }
+        }
+
+        function selectSpotForReservation(spotCode) {
+            selectedSpotCode = spotCode;
+
+            // Limpiar selección previa
+            document.querySelectorAll('#spots-grid-container button').forEach(btn => {
+                if (!btn.className.includes('bg-amber') && !btn.className.includes('bg-rose')) {
+                    btn.className = "p-3 rounded-xl border font-black text-xs flex flex-col items-center justify-center space-y-1 transition-all bg-mint-500/20 text-mint-400 border-mint-500/50";
+                }
+            });
+
+            // Highlight selected spot
+            const activeBtn = document.getElementById(`spot-btn-${spotCode}`);
+            if (activeBtn) {
+                activeBtn.className = "p-3 rounded-xl border font-black text-xs flex flex-col items-center justify-center space-y-1 transition-all bg-mint-500 text-slate-950 border-mint-400 shadow-lg scale-105";
+            }
+
+            const btnConfirm = document.getElementById('btn-confirm-spot');
+            btnConfirm.disabled = false;
+            btnConfirm.className = "w-full bg-mint-500 hover:bg-mint-600 text-slate-950 font-black py-3.5 rounded-xl text-xs transition-all shadow-lg glow-mint flex items-center justify-center space-x-2";
+            btnConfirm.innerHTML = `
+                <i class="fa-solid fa-circle-check"></i>
+                <span>Confirmar Reserva Cajón ${spotCode}</span>
+            `;
+        }
+
+        function confirmSpotReservation() {
+            if (!selectedParkingForModal || !selectedSpotCode) return;
+
+            startParkingStay(selectedParkingForModal.id, selectedParkingForModal.name, selectedSpotCode, selectedParkingForModal.rate);
+            closeParkingModal();
+            switchTab('boleto');
+        }
+
+        /* ==========================================================================
+           GESTIÓN DE ESTANCIA Y CRONÓMETRO EN TIEMPO REAL
+           ========================================================================== */
+        function startParkingStay(parkingId, parkingName, spotCode, ratePerHour) {
+            // Cancelar estancia anterior si existiese
+            if (activeStay && activeStay.timerInterval) {
+                clearInterval(activeStay.timerInterval);
+            }
+
+            activeStay = {
+                parkingId,
+                parkingName,
+                spotCode,
+                ratePerHour,
+                startTime: new Date(),
+                timerInterval: null
+            };
+
+            // Iniciar intervalo de actualización cada segundo
+            activeStay.timerInterval = setInterval(updateChronometerUI, 1000);
+            updateChronometerUI();
+
+            // Actualizar interfaz visual global
+            updateActiveReservationCardUI(true);
+            syncQrTabUI(true);
+            
+            // Indicador en pestaña Boleto
+            document.getElementById('nav-ticket-dot').classList.remove('hidden');
+        }
+
+        function updateChronometerUI() {
+            if (!activeStay) return;
+
+            const now = new Date();
+            const diffMs = now - activeStay.startTime;
+            const diffSec = Math.floor(diffMs / 1000);
+
+            const hrs = String(Math.floor(diffSec / 3600)).padStart(2, '0');
+            const mins = String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0');
+            const secs = String(diffSec % 60).padStart(2, '0');
+
+            // Renderizar tiempo
+            document.getElementById('ticket-chronometer').innerText = `${hrs}:${mins}:${secs}`;
+
+            // Cálculo de cobro dinámico por hora o fracción
+            const hoursElapsed = Math.max(1, Math.ceil(diffSec / 3600));
+            const calculatedCost = (hoursElapsed * activeStay.ratePerHour).toFixed(2);
+
+            document.getElementById('ticket-current-cost').innerText = `$${calculatedCost}`;
+            document.getElementById('ticket-parking-name').innerText = activeStay.parkingName;
+            document.getElementById('ticket-spot-code').innerText = `Cajón: ${activeStay.spotCode}`;
+            document.getElementById('ticket-rate-label').innerText = `$${activeStay.ratePerHour}.00`;
+            document.getElementById('ticket-user-plate').innerText = currentUser.plates[currentUser.activePlateIndex];
+
+            // Hora de entrada formateada
+            const startH = activeStay.startTime.getHours();
+            const startM = String(activeStay.startTime.getMinutes()).padStart(2, '0');
+            const ampm = startH >= 12 ? 'PM' : 'AM';
+            const formattedStart = `${startH % 12 || 12}:${startM} ${ampm}`;
+            document.getElementById('ticket-start-time').innerText = formattedStart;
+
+            // Mostrar vista activa de boleto
+            document.getElementById('ticket-no-active').classList.add('hidden');
+            document.getElementById('ticket-active').classList.remove('hidden');
+        }
+
+        function cancelActiveReservation() {
+            if (!activeStay) return;
+
+            if (confirm("¿Deseas cancelar la reservación/estancia activa?")) {
+                if (activeStay.timerInterval) clearInterval(activeStay.timerInterval);
+                activeStay = null;
+
+                updateActiveReservationCardUI(false);
+                syncQrTabUI(false);
+
+                document.getElementById('ticket-active').classList.add('hidden');
+                document.getElementById('ticket-no-active').classList.remove('hidden');
+                document.getElementById('nav-ticket-dot').classList.add('hidden');
+            }
+        }
+
+        function updateActiveReservationCardUI(hasActive) {
+            const card = document.getElementById('active-reservation-card');
+            if (hasActive && activeStay) {
+                document.getElementById('active-res-name').innerText = activeStay.parkingName;
+                document.getElementById('active-res-spot').innerText = `Lugar: Cajón ${activeStay.spotCode}`;
+                card.classList.remove('hidden');
+            } else {
+                card.classList.add('hidden');
+            }
+        }
+
+        /* ==========================================================================
+           CICLO DINÁMICO DE PASE QR <-> SALIDA QR
+           ========================================================================== */
+        function syncQrTabUI(hasActiveStay) {
+            const title = document.getElementById('qr-title-main');
+            const desc = document.getElementById('qr-desc-main');
+            const badge = document.getElementById('qr-badge-type');
+            const statusText = document.getElementById('qr-status-text');
+            const clickPrompt = document.getElementById('qr-click-prompt');
+            const navLabel = document.getElementById('nav-qr-label');
+
+            if (hasActiveStay) {
+                // Estado: SALIDA QR
+                badge.innerText = "CHECK-OUT RÁPIDO";
+                badge.className = "text-xs font-black tracking-widest text-brandBlue-400 bg-brandBlue-950 px-3 py-1 rounded-full border border-brandBlue-500/30 uppercase inline-block mb-1";
+                title.innerText = "Salida QR (Finalizar)";
+                desc.innerText = "Toca para registrar tu salida y procesar pago";
+                statusText.innerText = "ESTANCIA EN CURSO";
+                clickPrompt.innerHTML = `<i class="fa-solid fa-right-from-bracket text-brandBlue-400"></i> <span class="text-brandBlue-400">Toca para Escanear Salida y Pagar</span>`;
+                navLabel.innerText = "Salida QR";
+                navLabel.className = "text-[9px] font-bold mt-0.5 text-brandBlue-400";
+            } else {
+                // Estado: PASE QR (Entrada)
+                badge.innerText = "ACCESO RÁPIDO";
+                badge.className = "text-xs font-black tracking-widest text-mint-400 bg-mint-950 px-3 py-1 rounded-full border border-mint-500/30 uppercase inline-block mb-1";
+                title.innerText = "Pase QR (Entrada)";
+                desc.innerText = "Pulsa la tarjeta o escanea para registrar tu ingreso libre";
+                statusText.innerText = "LISTO PARA ENTRADA";
+                clickPrompt.innerHTML = `<i class="fa-solid fa-hand-pointer animate-bounce"></i> <span>Toca para Escanear Entrada Exprés</span>`;
+                navLabel.innerText = "Pase QR";
+                navLabel.className = "text-[9px] font-bold mt-0.5 text-mint-400";
+            }
+        }
+
+        function handleQrAction() {
+            if (!activeStay) {
+                // ENTRADA EXPRÉS CON PASE QR: Iniciar en el primer estacionamiento por defecto (Monopoly)
+                startParkingStay('monopoly', 'Estacionamiento Monopoly', 'A-01', 20.00);
+                switchTab('boleto');
+            } else {
+                // SALIDA CON SALIDA QR: Calcular cobro y finalizar
+                finishParkingStayAndPay();
+            }
+        }
+
+        function finishParkingStayAndPay() {
+            if (!activeStay) return;
+
+            const now = new Date();
+            const diffMs = now - activeStay.startTime;
+            const diffSec = Math.floor(diffMs / 1000);
+            const hoursElapsed = Math.max(1, Math.ceil(diffSec / 3600));
+            const totalCost = hoursElapsed * activeStay.ratePerHour;
+
+            // Verificar saldo
+            if (currentUser.walletBalance < totalCost) {
+                alert(`Saldo insuficiente ($${currentUser.walletBalance.toFixed(2)} MXN). Por favor recarga tu monedero.`);
+                switchTab('perfil');
+                openRechargeModal();
+                return;
+            }
+
+            // Descontar saldo y detener interval
+            currentUser.walletBalance -= totalCost;
+            if (activeStay.timerInterval) clearInterval(activeStay.timerInterval);
+
+            // Formatear duración recibo
+            const hrs = String(Math.floor(diffSec / 3600)).padStart(2, '0');
+            const mins = String(Math.floor((diffSec % 3600) / 60)).padStart(2, '0');
+            const secs = String(diffSec % 60).padStart(2, '0');
+            const durationStr = `${hrs}:${mins}:${secs}`;
+
+            // Registrar transacción en el historial
+            historyTransactions.unshift({
+                id: `TRX-${Math.floor(100 + Math.random() * 900)}`,
+                type: 'stay',
+                title: activeStay.parkingName,
+                date: 'Hoy, Hace un momento',
+                duration: durationStr,
+                amount: totalCost
+            });
+
+            // Mostrar modal de recibo
+            document.getElementById('receipt-park-name').innerText = activeStay.parkingName;
+            document.getElementById('receipt-duration').innerText = durationStr;
+            document.getElementById('receipt-spot').innerText = activeStay.spotCode;
+            document.getElementById('receipt-amount').innerText = `$${totalCost.toFixed(2)} MXN`;
+            document.getElementById('receipt-new-balance').innerText = `$${currentUser.walletBalance.toFixed(2)} MXN`;
+
+            document.getElementById('modal-receipt').classList.remove('hidden');
+
+            // Resetear estados
+            activeStay = null;
+            updateActiveReservationCardUI(false);
+            syncQrTabUI(false);
+            renderProfileData();
+            renderHistoryList();
+
+            document.getElementById('ticket-active').classList.add('hidden');
+            document.getElementById('ticket-no-active').classList.remove('hidden');
+            document.getElementById('nav-ticket-dot').classList.add('hidden');
+        }
+
+        function closeReceiptModal() {
+            document.getElementById('modal-receipt').classList.add('hidden');
+            switchTab('historial');
+        }
+
+        /* ==========================================================================
+           GESTIÓN DE HISTORIAL
+           ========================================================================== */
+        function renderHistoryList() {
+            const container = document.getElementById('history-list-container');
+            const badge = document.getElementById('history-count-badge');
+            container.innerHTML = '';
+
+            badge.innerText = `${historyTransactions.length} Movimientos`;
+
+            historyTransactions.forEach(trx => {
+                const item = document.createElement('div');
+                item.className = "bg-slate-900 p-3.5 rounded-2xl border border-slate-800 flex items-center justify-between";
+
+                const isRecharge = trx.type === 'recharge';
+                const iconClass = isRecharge ? "fa-wallet text-mint-400" : "fa-square-parking text-brandBlue-400";
+                const bgIcon = isRecharge ? "bg-mint-950 border-mint-500/30" : "bg-brandBlue-950 border-brandBlue-500/30";
+                const amountPrefix = isRecharge ? "+" : "-";
+                const amountColor = isRecharge ? "text-mint-400" : "text-white";
+
+                item.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-xl ${bgIcon} border flex items-center justify-center text-lg">
+                            <i class="fa-solid ${iconClass}"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-xs font-bold text-white">${trx.title}</h4>
+                            <div class="text-[10px] text-slate-400 flex items-center space-x-2 mt-0.5">
+                                <span>${trx.date}</span>
+                                ${!isRecharge ? `<span>• Duración: ${trx.duration}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    <span class="text-xs font-black ${amountColor}">${amountPrefix}$${trx.amount.toFixed(2)}</span>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        /* ==========================================================================
+           GESTIÓN DE PERFIL Y RECARGA DE MONEDERO
+           ========================================================================== */
+        function renderProfileData() {
+            document.getElementById('header-wallet-balance').innerText = `$${currentUser.walletBalance.toFixed(2)}`;
+            document.getElementById('profile-wallet-amount').innerText = `$${currentUser.walletBalance.toFixed(2)}`;
+            document.getElementById('profile-user-name').innerText = currentUser.name;
+            document.getElementById('profile-user-email').innerText = currentUser.email;
+
+            // Iniciales del avatar
+            const names = currentUser.name.split(' ');
+            const initials = names.length >= 2 ? `${names[0][0]}${names[1][0]}` : currentUser.name.substring(0, 2);
+            document.getElementById('profile-avatar-initials').innerText = initials.toUpperCase();
+
+            // Placa activa
+            const activePlate = currentUser.plates[currentUser.activePlateIndex] || "ABC-123-A";
+            document.getElementById('app-user-plate-badge').innerText = `PLACA: ${activePlate}`;
+
+            // Renderizar lista de vehículos
+            const platesContainer = document.getElementById('plates-list-container');
+            platesContainer.innerHTML = '';
+
+            currentUser.plates.forEach((plate, idx) => {
+                const isSelected = idx === currentUser.activePlateIndex;
+                const plateRow = document.createElement('div');
+                plateRow.className = `flex items-center justify-between p-3 rounded-2xl border transition-all ${isSelected ? 'bg-mint-950/40 border-mint-500/50' : 'bg-slate-800/60 border-slate-700/60'}`;
+                plateRow.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <i class="fa-solid fa-car text-slate-400 text-sm"></i>
+                        <span class="text-xs font-mono font-bold text-white">${plate}</span>
+                    </div>
+                    ${isSelected ? 
+                        `<span class="text-[10px] font-bold text-mint-400 bg-mint-950 px-2 py-0.5 rounded border border-mint-500/30">EN USO</span>` : 
+                        `<button onclick="setActivePlate(${idx})" class="text-[10px] font-bold text-slate-400 hover:text-white bg-slate-700 px-2 py-0.5 rounded">Usar</button>`
+                    }
+                `;
+                platesContainer.appendChild(plateRow);
+            });
+        }
+
+        function setActivePlate(index) {
+            currentUser.activePlateIndex = index;
+            renderProfileData();
+        }
+
+        function addNewPlatePrompt() {
+            const newPlate = prompt("Ingresa el número de placa del nuevo vehículo:");
+            if (newPlate) {
+                currentUser.plates.push(newPlate.toUpperCase());
+                currentUser.activePlateIndex = currentUser.plates.length - 1;
+                renderProfileData();
+            }
+        }
+
+        // Modal Recarga
+        function openRechargeModal() {
+            document.getElementById('modal-recharge').classList.remove('hidden');
+        }
+
+        function closeRechargeModal() {
+            document.getElementById('modal-recharge').classList.add('hidden');
+        }
+
+        function selectPresetAmount(amount) {
+            document.getElementById('input-recharge-amount').value = amount;
+        }
+
+        function processWalletRecharge() {
+            const inputVal = parseFloat(document.getElementById('input-recharge-amount').value);
+            if (isNaN(inputVal) || inputVal <= 0) {
+                alert("Por favor ingresa un monto válido de recarga.");
+                return;
+            }
+
+            currentUser.walletBalance += inputVal;
+
+            // Historial
+            historyTransactions.unshift({
+                id: `TRX-${Math.floor(100 + Math.random() * 900)}`,
+                type: 'recharge',
+                title: 'Recarga de Monedero',
+                date: 'Hoy, Hace un momento',
+                duration: '-',
+                amount: inputVal
+            });
+
+            renderProfileData();
+            renderHistoryList();
+            closeRechargeModal();
+            document.getElementById('input-recharge-amount').value = '';
+
+            alert(`¡Recarga exitosa! Se han acreditado $${inputVal.toFixed(2)} MXN a tu monedero.`);
+        }
+    </script>
+</body>
+</html>
